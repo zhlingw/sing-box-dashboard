@@ -1,0 +1,453 @@
+import { useEffect, useRef, useState } from "react";
+
+import {
+  formatBitrate,
+  natFilteringDescription,
+  natFilteringTone,
+  natMappingDescription,
+  natMappingTone,
+  proxyDisplayType,
+} from "../api/format";
+import { useStream } from "../api/stream";
+import { navigate, useApi } from "../app/context";
+import { useI18n } from "../app/i18n";
+import { Icon, type IconName } from "../components/Icon";
+import { Badge, Card, DataLine, Field, Spinner, Toggle } from "../components/ui";
+import {
+  ServiceStatus_Type,
+  type NetworkQualityTestProgress,
+  type STUNTestProgress,
+} from "../gen/daemon/started_service_pb";
+
+const NETWORK_QUALITY_DEFAULT_URL = "https://mensura.cdn-apple.com/api/v1/gm/config";
+const STUN_DEFAULT_SERVER = "stun.voipgate.com:3478";
+
+export function ToolsView() {
+  const api = useApi();
+  const { t } = useI18n();
+  const serviceStatus = useStream(api.serviceStatus);
+  const started = serviceStatus.data.status?.status === ServiceStatus_Type.STARTED;
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <h1 className="page-title">{t("Tools")}</h1>
+      </div>
+      <div className="settings-stack">
+        {started && <TailscaleEndpointRows />}
+        <div>
+          <div className="list-section-title">{t("Network")}</div>
+          <div className="nav-list">
+            <NavRow
+              icon="network_check"
+              title={t("Network Quality")}
+              onClick={() => navigate("tools/network-quality")}
+            />
+            <NavRow icon="swap_horiz" title={t("STUN Test")} onClick={() => navigate("tools/stun")} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Tailscale lives under Tools as an "Endpoints" section, mirroring the macOS
+// app; it appears only while the running configuration has endpoints.
+function TailscaleEndpointRows() {
+  const api = useApi();
+  const { t } = useI18n();
+  const tailscale = useStream(api.tailscale);
+  const endpoints = tailscale.data.endpoints;
+  if (!tailscale.data.loaded || endpoints.length === 0) {
+    return null;
+  }
+  return (
+    <div>
+      <div className="list-section-title">{t("Endpoints")}</div>
+      <div className="nav-list">
+        {endpoints.map((endpoint) => (
+          <NavRow
+            key={endpoint.endpointTag}
+            icon="hub"
+            title={
+              endpoints.length > 1 && endpoint.endpointTag !== ""
+                ? t("Tailscale: {tag}", { tag: endpoint.endpointTag })
+                : "Tailscale"
+            }
+            onClick={() => navigate(`tools/tailscale/${encodeURIComponent(endpoint.endpointTag)}`)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NavRow(props: { icon: IconName; title: string; onClick: () => void }) {
+  return (
+    <button className="nav-row" onClick={props.onClick}>
+      <Icon name={props.icon} size={15} />
+      <span>{props.title}</span>
+      <Icon name="keyboard_arrow_right" size={14} />
+    </button>
+  );
+}
+
+export function ToolsPageHeader(props: { title: string }) {
+  const { t } = useI18n();
+  return (
+    <div className="page-header">
+      <button className="back-button" onClick={() => navigate("tools")}>
+        <Icon name="arrow_back" size={15} />
+        {t("Tools")}
+      </button>
+      <h1 className="page-title">{props.title}</h1>
+    </div>
+  );
+}
+
+function OutboundPicker(props: { value: string; onChange: (value: string) => void; disabled?: boolean }) {
+  const api = useApi();
+  const { t } = useI18n();
+  const outbounds = useStream(api.outbounds);
+  return (
+    <Field label={t("Outbound")}>
+      <select
+        className="select"
+        value={props.value}
+        disabled={props.disabled}
+        onChange={(event) => props.onChange(event.target.value)}
+      >
+        <option value="">{t("Default")}</option>
+        {outbounds.data.outbounds.map((outbound) => (
+          <option key={outbound.tag} value={outbound.tag}>
+            {outbound.tag} ({proxyDisplayType(outbound.type)}
+            {outbound.urlTestDelay > 0 ? `, ${outbound.urlTestDelay}ms` : ""})
+          </option>
+        ))}
+      </select>
+    </Field>
+  );
+}
+
+function AccuracyBadge(props: { accuracy: number }) {
+  const { t } = useI18n();
+  switch (props.accuracy) {
+    case 2:
+      return <Badge tone="good">{t("High")}</Badge>;
+    case 1:
+      return <Badge tone="medium">{t("Medium")}</Badge>;
+    default:
+      return <Badge tone="bad">{t("Low")}</Badge>;
+  }
+}
+
+export function NetworkQualityView() {
+  const api = useApi();
+  const { t } = useI18n();
+  const [configURL, setConfigURL] = useState(NETWORK_QUALITY_DEFAULT_URL);
+  const [outboundTag, setOutboundTag] = useState("");
+  const [serial, setSerial] = useState(false);
+  const [http3, setHttp3] = useState(false);
+  const [maxRuntime, setMaxRuntime] = useState(20);
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState<NetworkQualityTestProgress | null>(null);
+  const [error, setError] = useState("");
+  const controllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => controllerRef.current?.abort(), []);
+
+  const start = async () => {
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    setRunning(true);
+    setProgress(null);
+    setError("");
+    try {
+      for await (const update of api.client.startNetworkQualityTest(
+        {
+          configURL,
+          outboundTag,
+          serial,
+          http3,
+          maxRuntimeSeconds: maxRuntime,
+        },
+        { signal: controller.signal },
+      )) {
+        setProgress(update);
+        if (update.error !== "") {
+          setError(update.error);
+        }
+      }
+    } catch (streamError) {
+      if (!controller.signal.aborted) {
+        setError(String(streamError));
+      }
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const stop = () => {
+    controllerRef.current?.abort();
+    setRunning(false);
+  };
+
+  const finished = progress?.isFinal ?? false;
+  const phase = progress?.phase ?? 0;
+
+  return (
+    <div className="page">
+      <ToolsPageHeader title={t("Network Quality")} />
+      <div className="tool-columns">
+        <Card>
+          <Field label={t("Configuration URL")}>
+            <input
+              className="input"
+              value={configURL}
+              onChange={(event) => setConfigURL(event.target.value)}
+              disabled={running}
+            />
+          </Field>
+          <OutboundPicker value={outboundTag} onChange={setOutboundTag} disabled={running} />
+          <Field label={t("Max runtime")}>
+            <select
+              className="select"
+              value={maxRuntime}
+              onChange={(event) => setMaxRuntime(Number(event.target.value))}
+              disabled={running}
+            >
+              <option value={20}>{t("{count} seconds", { count: 20 })}</option>
+              <option value={30}>{t("{count} seconds", { count: 30 })}</option>
+              <option value={60}>{t("{count} seconds", { count: 60 })}</option>
+            </select>
+          </Field>
+          <Toggle label={t("Serial")} value={serial} onChange={setSerial} disabled={running} />
+          <Toggle label="HTTP/3" value={http3} onChange={setHttp3} disabled={running} />
+          <div className="row-actions" style={{ marginTop: 10 }}>
+            {running ? (
+              <button className="button danger" onClick={stop}>
+                <Icon name="stop" size={13} />
+                {t("Cancel test")}
+              </button>
+            ) : (
+              <button className="button primary" onClick={() => void start()}>
+                <Icon name="play_arrow" size={13} />
+                {t("Start test")}
+              </button>
+            )}
+          </div>
+        </Card>
+        {(running || progress !== null || error !== "") && (
+        <Card title={t("Results")}>
+          {error !== "" && (
+            <div className="banner error" style={{ marginBottom: 10 }}>
+              <Icon name="warning_amber" />
+              <div>{error}</div>
+            </div>
+          )}
+          {progress && (
+            <>
+              <DataLine
+                label={t("Idle latency")}
+                value={progress.idleLatencyMs > 0 ? `${progress.idleLatencyMs} ms` : "-"}
+              />
+              <DataLine
+                label={t("Download")}
+                value={
+                  <ResultValue
+                    pending={running && !finished && phase === 1}
+                    value={progress.downloadCapacity > 0n ? formatBitrate(progress.downloadCapacity) : "-"}
+                    badge={finished && progress.downloadCapacity > 0n ? <AccuracyBadge accuracy={progress.downloadCapacityAccuracy} /> : null}
+                  />
+                }
+              />
+              <DataLine
+                label={t("Upload")}
+                value={
+                  <ResultValue
+                    pending={running && !finished && phase === 2}
+                    value={progress.uploadCapacity > 0n ? formatBitrate(progress.uploadCapacity) : "-"}
+                    badge={finished && progress.uploadCapacity > 0n ? <AccuracyBadge accuracy={progress.uploadCapacityAccuracy} /> : null}
+                  />
+                }
+              />
+              <DataLine
+                label={t("Download RPM")}
+                value={
+                  <ResultValue
+                    pending={running && !finished && phase === 1}
+                    value={progress.downloadRPM > 0 ? String(progress.downloadRPM) : "-"}
+                    badge={finished && progress.downloadRPM > 0 ? <AccuracyBadge accuracy={progress.downloadRPMAccuracy} /> : null}
+                  />
+                }
+              />
+              <DataLine
+                label={t("Upload RPM")}
+                value={
+                  <ResultValue
+                    pending={running && !finished && phase === 2}
+                    value={progress.uploadRPM > 0 ? String(progress.uploadRPM) : "-"}
+                    badge={finished && progress.uploadRPM > 0 ? <AccuracyBadge accuracy={progress.uploadRPMAccuracy} /> : null}
+                  />
+                }
+              />
+              <DataLine
+                label={t("Elapsed")}
+                value={`${(Number(progress.elapsedMs) / 1000).toFixed(1)}s`}
+              />
+            </>
+          )}
+          {!progress && running && (
+            <div className="hint" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <Spinner /> {t("Fetching configuration...")}
+            </div>
+          )}
+        </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ResultValue(props: { pending: boolean; value: string; badge: React.ReactNode }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+      {props.pending && <Spinner />}
+      {props.value}
+      {props.badge}
+    </span>
+  );
+}
+
+export function STUNTestView() {
+  const api = useApi();
+  const { t } = useI18n();
+  const [server, setServer] = useState(STUN_DEFAULT_SERVER);
+  const [outboundTag, setOutboundTag] = useState("");
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState<STUNTestProgress | null>(null);
+  const [error, setError] = useState("");
+  const controllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => controllerRef.current?.abort(), []);
+
+  const start = async () => {
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    setRunning(true);
+    setProgress(null);
+    setError("");
+    try {
+      for await (const update of api.client.startSTUNTest(
+        { server, outboundTag },
+        { signal: controller.signal },
+      )) {
+        setProgress(update);
+        if (update.error !== "") {
+          setError(update.error);
+        }
+      }
+    } catch (streamError) {
+      if (!controller.signal.aborted) {
+        setError(String(streamError));
+      }
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const stop = () => {
+    controllerRef.current?.abort();
+    setRunning(false);
+  };
+
+  return (
+    <div className="page">
+      <ToolsPageHeader title={t("STUN Test")} />
+      <div className="tool-columns">
+        <Card>
+          <Field label={t("Server")}>
+            <input
+              className="input"
+              value={server}
+              onChange={(event) => setServer(event.target.value)}
+              disabled={running}
+            />
+          </Field>
+          <OutboundPicker value={outboundTag} onChange={setOutboundTag} disabled={running} />
+          <div className="row-actions" style={{ marginTop: 10 }}>
+            {running ? (
+              <button className="button danger" onClick={stop}>
+                <Icon name="stop" size={13} />
+                {t("Cancel test")}
+              </button>
+            ) : (
+              <button className="button primary" onClick={() => void start()}>
+                <Icon name="play_arrow" size={13} />
+                {t("Start test")}
+              </button>
+            )}
+          </div>
+        </Card>
+        {(running || progress !== null || error !== "") && (
+        <Card title={t("Results")}>
+          {error !== "" && (
+            <div className="banner error" style={{ marginBottom: 10 }}>
+              <Icon name="warning_amber" />
+              <div>{error}</div>
+            </div>
+          )}
+          {progress && (
+            <>
+              <DataLine label={t("External address")} value={progress.externalAddr || "-"} />
+              <DataLine
+                label={t("Latency")}
+                value={progress.latencyMs > 0 ? `${progress.latencyMs} ms` : "-"}
+              />
+              {progress.isFinal && !progress.natTypeSupported ? (
+                <DataLine label={t("NAT type detection")} value={t("Not supported by server")} />
+              ) : (
+                <>
+                  <DataLine
+                    label={t("NAT mapping")}
+                    value={
+                      progress.natMapping > 0 ? (
+                        <Badge tone={natMappingTone(progress.natMapping)}>
+                          {t(natMappingDescription(progress.natMapping))}
+                        </Badge>
+                      ) : running ? (
+                        <Spinner />
+                      ) : (
+                        "-"
+                      )
+                    }
+                  />
+                  <DataLine
+                    label={t("NAT filtering")}
+                    value={
+                      progress.natFiltering > 0 ? (
+                        <Badge tone={natFilteringTone(progress.natFiltering)}>
+                          {t(natFilteringDescription(progress.natFiltering))}
+                        </Badge>
+                      ) : running ? (
+                        <Spinner />
+                      ) : (
+                        "-"
+                      )
+                    }
+                  />
+                </>
+              )}
+            </>
+          )}
+          {!progress && running && (
+            <div className="hint" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <Spinner /> {t("Binding...")}
+            </div>
+          )}
+        </Card>
+        )}
+      </div>
+    </div>
+  );
+}
