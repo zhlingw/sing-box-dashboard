@@ -699,11 +699,18 @@ function SSHPrompt(props: {
         />
       </Field>
       <Toggle label={t("Remember SSH options")} value={remember} onChange={setRemember} />
-      {remember && (
-        <div className="hint">
-          {t("Connect will open the session directly without asking again.")}
+      <div className="hint" style={{ display: "grid", gap: 6 }}>
+        <div>
+          {t(
+            "If enabled, Connect will open the session directly without asking again. This also applies to the shortcut menu on this peer's entry in the peer list.",
+          )}
         </div>
-      )}
+        <div>
+          {t(
+            "This peer will also appear in the New Session menu when connected to other peers via SSH.",
+          )}
+        </div>
+      </div>
       <div className="row-actions" style={{ marginTop: 14 }}>
         <button className="button" onClick={props.onCancel}>
           {t("Cancel")}

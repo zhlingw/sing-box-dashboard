@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   createServerId,
@@ -7,16 +7,18 @@ import {
   type Server,
   type ServersState,
 } from "../api/config";
-import type { ThemePreference } from "../app/context";
+import { isAccentPreset, type AccentPreference, type ThemePreference } from "../app/context";
 import { LanguageSelect, useI18n } from "../app/i18n";
 import { Icon } from "../components/Icon";
-import { Dialog, Field, ThemeSelect } from "../components/ui";
+import { ACCENT_TITLES, AccentSelect, Dialog, Field, ThemeSelect } from "../components/ui";
 
 export function SettingsView(props: {
   serversState: ServersState;
   onServersChange: (state: ServersState) => void;
   theme: ThemePreference;
   onThemeChange: (theme: ThemePreference) => void;
+  accent: AccentPreference;
+  onAccentChange: (accent: AccentPreference) => void;
 }) {
   const { t } = useI18n();
   const { servers, activeId } = props.serversState;
@@ -71,6 +73,10 @@ export function SettingsView(props: {
           <ThemeSelect theme={props.theme} onChange={props.onThemeChange} />
         </div>
         <div className="settings-row">
+          <span className="settings-row-label">{t("Theme")}</span>
+          <ThemeMenu accent={props.accent} onChange={props.onAccentChange} />
+        </div>
+        <div className="settings-row">
           <span className="settings-row-label">{t("Language")}</span>
           <LanguageSelect className="select inline" />
         </div>
@@ -83,6 +89,64 @@ export function SettingsView(props: {
           onDelete={removeServer}
           onClose={() => setEditing(null)}
         />
+      )}
+    </div>
+  );
+}
+
+// Accent dropdown for the Theme row: the preset swatch row plus the
+// multicolor custom entry, in a menu like the server picker's. Picking a
+// preset closes the menu; the custom swatch keeps it open while the
+// browser's color panel (with its own hex field) is in use.
+function ThemeMenu(props: {
+  accent: AccentPreference;
+  onChange: (accent: AccentPreference) => void;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
+
+  return (
+    <div className="menu-anchor" ref={ref}>
+      <button className="button" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {isAccentPreset(props.accent) ? (
+          <>
+            <span className="accent-dot" data-accent={props.accent} />
+            {t(ACCENT_TITLES[props.accent])}
+          </>
+        ) : (
+          <>
+            <span className="accent-dot" style={{ background: props.accent }} />
+            {props.accent.toUpperCase()}
+          </>
+        )}
+        <Icon name="unfold_more" size={13} />
+      </button>
+      {open && (
+        <div className="menu align-right accent-menu">
+          <AccentSelect
+            accent={props.accent}
+            onChange={(accent) => {
+              props.onChange(accent);
+              if (isAccentPreset(accent)) {
+                setOpen(false);
+              }
+            }}
+          />
+        </div>
       )}
     </div>
   );

@@ -8,16 +8,22 @@ import {
   type ServersState,
 } from "./api/config";
 import { DaemonApi } from "./api/daemon";
+import { formatDateTime, formatUptime } from "./api/format";
 import { useStream } from "./api/stream";
 import { ServiceStatus_Type, type DeprecatedWarning } from "./gen/daemon/started_service_pb";
 import {
   ApiContext,
+  applyAccent,
   applyTheme,
+  loadAccentPreference,
   loadThemePreference,
   navigate,
+  saveAccentPreference,
   saveThemePreference,
   useApi,
+  useNow,
   watchSystemTheme,
+  type AccentPreference,
   type ThemePreference,
 } from "./app/context";
 import { I18nProvider, useI18n } from "./app/i18n";
@@ -90,11 +96,16 @@ function routeFromHash(): Route {
 export function App() {
   const [serversState, setServersState] = useState<ServersState>(() => loadServersState());
   const [theme, setTheme] = useState<ThemePreference>(() => loadThemePreference());
+  const [accent, setAccent] = useState<AccentPreference>(() => loadAccentPreference());
   const [route, setRoute] = useState<Route>(() => routeFromHash());
 
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
+
+  useEffect(() => {
+    applyAccent(accent);
+  }, [accent]);
 
   useEffect(() => watchSystemTheme(() => loadThemePreference()), []);
 
@@ -112,6 +123,11 @@ export function App() {
   const updateTheme = (next: ThemePreference) => {
     saveThemePreference(next);
     setTheme(next);
+  };
+
+  const updateAccent = (next: AccentPreference) => {
+    saveAccentPreference(next);
+    setAccent(next);
   };
 
   const activeServer =
@@ -137,6 +153,8 @@ export function App() {
           route={route}
           theme={theme}
           onThemeChange={updateTheme}
+          accent={accent}
+          onAccentChange={updateAccent}
         />
       )}
     </I18nProvider>
@@ -150,6 +168,8 @@ function Shell(props: {
   route: Route;
   theme: ThemePreference;
   onThemeChange: (theme: ThemePreference) => void;
+  accent: AccentPreference;
+  onAccentChange: (accent: AccentPreference) => void;
 }) {
   // Bumping the generation recreates the api, restarting every stream —
   // the manual "Retry" path, also needed for terminal errors (e.g. a wrong
@@ -170,6 +190,8 @@ function ShellContent(props: {
   route: Route;
   theme: ThemePreference;
   onThemeChange: (theme: ThemePreference) => void;
+  accent: AccentPreference;
+  onAccentChange: (accent: AccentPreference) => void;
   onRetry: () => void;
 }) {
   const api = useApi();
@@ -301,16 +323,18 @@ function ShellContent(props: {
           sing-box
           {version && <span className="sidebar-brand-version">{version}</span>}
         </div>
-        <ServerPicker
-          serversState={props.serversState}
-          onServersChange={props.onServersChange}
-        />
         {navItem("overview", t("Overview"), "dashboard", route.page === "overview")}
         {hasGroups && navItem("groups", t("Groups"), "folder", route.page === "groups")}
         {started && navItem("connections", t("Connections"), "swap_vert", route.page === "connections")}
         {navItem("logs", t("Logs"), "text_snippet", route.page === "logs")}
         {navItem("tools", t("Tools"), "terminal", route.page.startsWith("tools"))}
         {navItem("settings", t("Settings"), "settings", route.page === "settings")}
+        <ServerPicker
+          serversState={props.serversState}
+          onServersChange={props.onServersChange}
+          connected={reachable}
+          started={started}
+        />
       </nav>
       <main className="content">
         {route.page === "overview" && <OverviewView />}
@@ -327,6 +351,8 @@ function ShellContent(props: {
             onServersChange={props.onServersChange}
             theme={props.theme}
             onThemeChange={props.onThemeChange}
+            accent={props.accent}
+            onAccentChange={props.onAccentChange}
           />
         )}
       </main>
@@ -338,6 +364,8 @@ function ShellContent(props: {
 function ServerPicker(props: {
   serversState: ServersState;
   onServersChange: (state: ServersState) => void;
+  connected: boolean;
+  started: boolean;
 }) {
   const { t } = useI18n();
   const { servers, activeId } = props.serversState;
@@ -364,13 +392,18 @@ function ServerPicker(props: {
 
   return (
     <div className="server-picker" ref={ref}>
-      <button className="server-picker-button" onClick={() => setOpen(!open)}>
-        <Icon name="dns" size={14} />
-        <span className="server-name">{serverDisplayName(active)}</span>
+      <button className="server-picker-button" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="server-picker-text">
+          <span className="server-picker-line">
+            <span className={props.connected ? "state-dot good" : "state-dot"} />
+            <span className="server-name">{serverDisplayName(active)}</span>
+          </span>
+          {props.started && <ServerUptime />}
+        </span>
         <Icon name="unfold_more" size={13} />
       </button>
       {open && (
-        <div className="menu">
+        <div className="menu open-up">
           {servers.map((server) => (
             <button
               key={server.id}
@@ -394,12 +427,49 @@ function ServerPicker(props: {
               navigate("settings");
             }}
           >
-            <span className="menu-check" />
+            <span className="menu-check">
+              <Icon name="settings" size={13} />
+            </span>
             {t("Manage servers...")}
           </button>
         </div>
       )}
     </div>
+  );
+}
+
+// Own component so the 1 s clock tick re-renders only this element, not the
+// sidebar. Mounted only while the service runs, so a restart remounts it and
+// refetches the start time.
+function ServerUptime() {
+  const api = useApi();
+  const { t, language } = useI18n();
+  const now = useNow();
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    let stale = false;
+    api
+      .getStartedAt()
+      .then((value) => {
+        if (!stale) {
+          setStartedAt(value);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      stale = true;
+    };
+  }, [api]);
+
+  if (startedAt === null) {
+    return null;
+  }
+  return (
+    <span className="server-uptime" title={`${t("Uptime")} — ${formatDateTime(startedAt, language)}`}>
+      <Icon name="power_settings_new" size={10} />
+      {formatUptime(startedAt, now)}
+    </span>
   );
 }
 

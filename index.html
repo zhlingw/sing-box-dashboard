@@ -24,6 +24,33 @@
         } catch (e) {}
         document.documentElement.dataset.theme = dark ? "dark" : "light";
       })();
+      // Apply the saved accent before first paint so accent-colored controls
+      // don't flash monochrome. Must mirror applyAccent() in
+      // src/app/context.tsx (storage key, preset names, custom-color vars).
+      (function () {
+        try {
+          var accent = localStorage.getItem("sing-box-dashboard.accent");
+          if (!accent) {
+            return;
+          }
+          var presets = ["blue", "purple", "pink", "red", "orange", "yellow", "green", "graphite"];
+          if (presets.indexOf(accent) !== -1) {
+            document.documentElement.dataset.accent = accent;
+          } else if (/^#[0-9a-f]{6}$/.test(accent)) {
+            var lin = function (i) {
+              var c = parseInt(accent.slice(1 + i * 2, 3 + i * 2), 16) / 255;
+              return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+            };
+            var luminance = 0.2126 * lin(0) + 0.7152 * lin(1) + 0.0722 * lin(2);
+            document.documentElement.dataset.accent = "custom";
+            document.documentElement.style.setProperty("--custom-accent", accent);
+            document.documentElement.style.setProperty(
+              "--on-accent",
+              luminance > 0.45 ? "#1a1a1a" : "#ffffff"
+            );
+          }
+        } catch (e) {}
+      })();
       // Resolve the language before first paint so Farsi gets dir="rtl"
       // without a layout flash. Must mirror detectSystemLanguage() in
       // src/app/i18n.tsx (storage key and tag mapping).

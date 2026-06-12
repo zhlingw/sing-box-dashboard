@@ -1,9 +1,16 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { encode as encodeQR } from "uqr";
 
 import type { DelayTone } from "../api/format";
-import type { ThemePreference } from "../app/context";
-import { useI18n } from "../app/i18n";
+import {
+  ACCENT_PRESETS,
+  isAccentPreset,
+  normalizeAccentColor,
+  type AccentPreference,
+  type AccentPreset,
+  type ThemePreference,
+} from "../app/context";
+import { useI18n, type MessageKey } from "../app/i18n";
 import { Icon, type IconName } from "./Icon";
 
 export function Card(props: { icon?: IconName; title?: ReactNode; actions?: ReactNode; wide?: boolean; children?: ReactNode }) {
@@ -101,6 +108,62 @@ export function ThemeSelect(props: {
           <Icon name={option.icon} size={15} />
         </button>
       ))}
+    </div>
+  );
+}
+
+export const ACCENT_TITLES: Record<AccentPreset, MessageKey> = {
+  default: "Default",
+  blue: "Blue",
+  purple: "Purple",
+  pink: "Pink",
+  red: "Red",
+  orange: "Orange",
+  yellow: "Yellow",
+  green: "Green",
+  graphite: "Graphite",
+};
+
+// Accent swatch row mirroring the macOS System Settings picker. Each preset
+// button carries data-accent, so the global palette rules color it directly.
+// The trailing multicolor swatch hosts an invisible native color input — the
+// browser's picker brings its own palette and hex entry, so a custom color
+// needs no extra UI.
+export function AccentSelect(props: {
+  accent: AccentPreference;
+  onChange: (accent: AccentPreference) => void;
+}) {
+  const { t } = useI18n();
+  const custom = isAccentPreset(props.accent) ? null : props.accent;
+  // Seed the picker with the resolved accent so it opens on the current
+  // color even while a preset is selected.
+  const wellValue =
+    custom ??
+    (getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#1a1a1a");
+  return (
+    <div className="accent-picker">
+      {ACCENT_PRESETS.map((preset) => (
+        <button
+          key={preset}
+          type="button"
+          title={t(ACCENT_TITLES[preset])}
+          aria-label={t(ACCENT_TITLES[preset])}
+          aria-pressed={props.accent === preset}
+          className={props.accent === preset ? "active" : ""}
+          data-accent={preset}
+          onClick={() => props.onChange(preset)}
+        />
+      ))}
+      <label className={custom !== null ? "custom active" : "custom"} title={t("Custom color")}>
+        <input
+          type="color"
+          value={wellValue}
+          aria-label={t("Custom color")}
+          onChange={(event) =>
+            props.onChange(normalizeAccentColor(event.target.value) ?? event.target.value)
+          }
+        />
+      </label>
     </div>
   );
 }
@@ -208,10 +271,26 @@ export function OthersMenu(props: { children: ReactNode; icon?: IconName }) {
       </button>
       {open && (
         <div className="menu align-right" onClick={() => setOpen(false)}>
-          {props.children}
+          <SubMenuGroup>{props.children}</SubMenuGroup>
         </div>
       )}
     </div>
+  );
+}
+
+// Sibling submenus share this so opening one closes the other; mounted inside
+// the conditional render above so the state resets whenever the menu reopens.
+const SubMenuGroupContext = createContext<{
+  openId: string | null;
+  setOpenId: (id: string | null) => void;
+} | null>(null);
+
+function SubMenuGroup(props: { children: ReactNode }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  return (
+    <SubMenuGroupContext.Provider value={{ openId, setOpenId }}>
+      {props.children}
+    </SubMenuGroupContext.Provider>
   );
 }
 
@@ -223,7 +302,19 @@ export function MenuLabel(props: { children: ReactNode }) {
 // (Log Level / Save). Opens on hover for mouse, on tap for touch; selecting a
 // nested item bubbles up to OthersMenu and closes the whole menu.
 export function SubMenu(props: { label: ReactNode; icon?: IconName; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
+  const id = useId();
+  const group = useContext(SubMenuGroupContext);
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = group ? group.openId === id : localOpen;
+  const setOpen = (next: boolean) => {
+    if (!group) {
+      setLocalOpen(next);
+    } else if (next) {
+      group.setOpenId(id);
+    } else if (group.openId === id) {
+      group.setOpenId(null);
+    }
+  };
   return (
     <div
       className="submenu"

@@ -90,6 +90,164 @@
   --shadow-overlay: 0 12px 48px rgba(0, 0, 0, 0.55);
 }
 
+/* Accent palette, selected in Settings (data-accent on <html>, mirrored by
+   the pre-paint script in index.html). Colors are the macOS System Settings
+   accent set; "default" keeps the dashboard's monochrome accent. Rules are
+   unscoped so the picker swatches, which carry data-accent themselves, pick
+   up the same colors (see AccentSelect in ui.tsx); the descendant variant
+   covers swatches on a dark page. */
+[data-accent="default"] {
+  --accent: #1a1a1a;
+  --accent-strong: #000000;
+  --accent-soft: rgba(0, 0, 0, 0.07);
+  --on-accent: #ffffff;
+}
+
+[data-accent="blue"] {
+  --accent: #007aff;
+  --accent-strong: #0064d2;
+  --accent-soft: rgba(0, 122, 255, 0.13);
+  --on-accent: #ffffff;
+}
+
+[data-accent="purple"] {
+  --accent: #a550a7;
+  --accent-strong: #8a3f8c;
+  --accent-soft: rgba(165, 80, 167, 0.13);
+  --on-accent: #ffffff;
+}
+
+[data-accent="pink"] {
+  --accent: #f74f9e;
+  --accent-strong: #d63486;
+  --accent-soft: rgba(247, 79, 158, 0.13);
+  --on-accent: #ffffff;
+}
+
+[data-accent="red"] {
+  --accent: #ff5257;
+  --accent-strong: #e03237;
+  --accent-soft: rgba(255, 82, 87, 0.13);
+  --on-accent: #ffffff;
+}
+
+[data-accent="orange"] {
+  --accent: #f7821b;
+  --accent-strong: #d56c0c;
+  --accent-soft: rgba(247, 130, 27, 0.13);
+  --on-accent: #ffffff;
+}
+
+/* White on yellow is illegible; macOS also flips to dark text here. */
+[data-accent="yellow"] {
+  --accent: #ffc600;
+  --accent-strong: #cc9e00;
+  --accent-soft: rgba(255, 198, 0, 0.16);
+  --on-accent: #1a1a1a;
+}
+
+[data-accent="green"] {
+  --accent: #62ba46;
+  --accent-strong: #4f9d37;
+  --accent-soft: rgba(98, 186, 70, 0.13);
+  --on-accent: #ffffff;
+}
+
+[data-accent="graphite"] {
+  --accent: #8c8c8c;
+  --accent-strong: #6e6e6e;
+  --accent-soft: rgba(140, 140, 140, 0.15);
+  --on-accent: #ffffff;
+}
+
+[data-theme="dark"][data-accent="default"],
+[data-theme="dark"] [data-accent="default"] {
+  --accent: #ededed;
+  --accent-strong: #ffffff;
+  --accent-soft: rgba(255, 255, 255, 0.12);
+  --on-accent: #1a1a1a;
+}
+
+[data-theme="dark"][data-accent="blue"],
+[data-theme="dark"] [data-accent="blue"] {
+  --accent: #0a84ff;
+  --accent-strong: #4ba3ff;
+  --accent-soft: rgba(10, 132, 255, 0.18);
+  --on-accent: #ffffff;
+}
+
+[data-theme="dark"][data-accent="purple"],
+[data-theme="dark"] [data-accent="purple"] {
+  --accent: #b362b5;
+  --accent-strong: #c685c8;
+  --accent-soft: rgba(179, 98, 181, 0.18);
+  --on-accent: #ffffff;
+}
+
+[data-theme="dark"][data-accent="pink"],
+[data-theme="dark"] [data-accent="pink"] {
+  --accent: #f765aa;
+  --accent-strong: #fa8cc0;
+  --accent-soft: rgba(247, 101, 170, 0.18);
+  --on-accent: #ffffff;
+}
+
+[data-theme="dark"][data-accent="red"],
+[data-theme="dark"] [data-accent="red"] {
+  --accent: #ff5c61;
+  --accent-strong: #ff8589;
+  --accent-soft: rgba(255, 92, 97, 0.18);
+  --on-accent: #ffffff;
+}
+
+[data-theme="dark"][data-accent="orange"],
+[data-theme="dark"] [data-accent="orange"] {
+  --accent: #f78f33;
+  --accent-strong: #faa75f;
+  --accent-soft: rgba(247, 143, 51, 0.18);
+  --on-accent: #ffffff;
+}
+
+[data-theme="dark"][data-accent="yellow"],
+[data-theme="dark"] [data-accent="yellow"] {
+  --accent: #ffcc2e;
+  --accent-strong: #ffd95c;
+  --accent-soft: rgba(255, 204, 46, 0.18);
+  --on-accent: #1a1a1a;
+}
+
+[data-theme="dark"][data-accent="green"],
+[data-theme="dark"] [data-accent="green"] {
+  --accent: #6fc452;
+  --accent-strong: #90d277;
+  --accent-soft: rgba(111, 196, 82, 0.18);
+  --on-accent: #1a1a1a;
+}
+
+[data-theme="dark"][data-accent="graphite"],
+[data-theme="dark"] [data-accent="graphite"] {
+  --accent: #98989d;
+  --accent-strong: #b4b4b8;
+  --accent-soft: rgba(152, 152, 157, 0.18);
+  --on-accent: #ffffff;
+}
+
+/* Custom accent: a single color picked in the theme dialog. applyAccent()
+   sets --custom-accent (and a luminance-derived --on-accent) inline on
+   <html>; the tones are mixed here so they track theme switches on their
+   own. Mix ratios approximate the preset tables above. */
+[data-accent="custom"] {
+  --accent: var(--custom-accent);
+  --accent-strong: color-mix(in srgb, var(--custom-accent), #000000 18%);
+  --accent-soft: color-mix(in srgb, var(--custom-accent), transparent 86%);
+}
+
+[data-theme="dark"][data-accent="custom"],
+[data-theme="dark"] [data-accent="custom"] {
+  --accent-strong: color-mix(in srgb, var(--custom-accent), #ffffff 25%);
+  --accent-soft: color-mix(in srgb, var(--custom-accent), transparent 82%);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -153,7 +311,7 @@ textarea {
 }
 
 a {
-  color: var(--text);
+  color: var(--accent-strong);
   text-decoration-color: var(--border-strong);
   text-underline-offset: 3px;
   transition: text-decoration-color 0.15s ease;
@@ -233,8 +391,8 @@ a:hover {
 }
 
 .nav-item.active {
-  background: var(--active);
-  color: var(--text);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
   font-weight: 560;
 }
 
@@ -244,9 +402,12 @@ a:hover {
   transition: color 0.12s ease;
 }
 
-.nav-item:hover .icon,
-.nav-item.active .icon {
+.nav-item:hover .icon {
   color: var(--text-secondary);
+}
+
+.nav-item.active .icon {
+  color: var(--accent);
 }
 
 .state-dot {
@@ -271,41 +432,80 @@ a:hover {
 
 /* ---------- server picker ---------- */
 
+/* Pinned to the foot of the sidebar as a status row; the menu opens upward. */
 .server-picker {
   position: relative;
-  margin: 0 0 10px;
+  margin-top: auto;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
 }
 
 .server-picker-button {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 0;
+  background: transparent;
   border-radius: var(--radius-control);
-  padding: 6px 10px;
-  font-size: 12.5px;
-  font-weight: 520;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-weight: 480;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: border-color 0.12s ease, color 0.12s ease;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 
 .server-picker-button:hover {
-  border-color: var(--border-strong);
+  background: var(--hover);
   color: var(--text);
 }
 
-.server-picker-button .server-name {
+.server-picker-text {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   text-align: start;
+}
+
+.server-picker-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+/* The dot (8px) and the uptime icon (10px) each sit centered in the 16px
+   slot nav-item icons occupy, keeping both rows on the same columns. */
+.server-picker-line .state-dot {
+  margin: 0 4px;
+}
+
+.server-uptime > .icon {
+  flex-shrink: 0;
+  margin: 0 3px;
+}
+
+.server-picker-button .server-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.server-picker-button .icon:last-child {
+.server-uptime {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--text-faint);
+}
+
+.server-picker-button > .icon:last-child {
   color: var(--text-faint);
 }
 
@@ -326,6 +526,19 @@ a:hover {
 @keyframes menu-in {
   from {
     transform: translateY(-3px);
+    opacity: 0;
+  }
+}
+
+.menu.open-up {
+  top: auto;
+  bottom: calc(100% + 6px);
+  animation: menu-in-up 0.14s ease;
+}
+
+@keyframes menu-in-up {
+  from {
+    transform: translateY(3px);
     opacity: 0;
   }
 }
@@ -468,16 +681,6 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.page-uptime {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-faint);
-  margin-inline-end: 4px;
 }
 
 .back-button {
@@ -707,7 +910,7 @@ a:hover {
   background: transparent;
   padding: 0;
   cursor: pointer;
-  color: var(--text);
+  color: var(--accent-strong);
   text-decoration: underline;
   text-decoration-color: var(--border-strong);
   text-underline-offset: 3px;
@@ -1071,6 +1274,27 @@ a:hover {
   flex: 1;
 }
 
+/* Preference rows: one shared width for the right-hand controls so the
+   Appearance / Theme / Language controls line up. */
+.settings-row .icon-segmented,
+.settings-row .menu-anchor > .button,
+.settings-row .select.inline {
+  width: 150px;
+}
+
+.settings-row .icon-segmented button {
+  flex: 1;
+}
+
+/* Label sits at the start, the unfold chevron hugs the end. */
+.settings-row .menu-anchor > .button {
+  justify-content: flex-start;
+}
+
+.settings-row .menu-anchor > .button > .icon {
+  margin-inline-start: auto;
+}
+
 .settings-row-main {
   display: flex;
   align-items: center;
@@ -1150,8 +1374,95 @@ a:hover {
 }
 
 .icon-segmented button.active {
-  background: var(--active);
-  color: var(--text);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* macOS-style accent swatches; each button carries data-accent, so the
+   palette rules at the top of this file color it. The active swatch hollows
+   out into a ring, like the System Settings picker. */
+.accent-picker {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.accent-picker button,
+.accent-picker .custom {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.accent-picker button {
+  background: var(--accent);
+}
+
+.accent-picker button:hover,
+.accent-picker .custom:hover {
+  transform: scale(1.15);
+}
+
+.accent-picker button.active {
+  background: transparent;
+  box-shadow: inset 0 0 0 5px var(--accent);
+}
+
+/* Custom-color entry: a multicolor swatch like the macOS one, hosting an
+   invisible native color input (the browser picker has its own palette and
+   hex field). Active hollows out by covering the center with the menu
+   surface. */
+.accent-picker .custom {
+  position: relative;
+  display: inline-flex;
+  background: conic-gradient(
+    #ff5257,
+    #ffc600,
+    #62ba46,
+    #00c7be,
+    #007aff,
+    #a550a7,
+    #f74f9e,
+    #ff5257
+  );
+  overflow: hidden;
+}
+
+.accent-picker .custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+
+.accent-picker .custom.active::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: var(--card);
+  pointer-events: none;
+}
+
+/* Current-accent dot inside the Theme row trigger button. */
+.accent-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+/* Dropdown panel for the Theme row in Settings. */
+.menu.accent-menu {
+  padding: 12px 13px;
 }
 
 /* ---------- setup ---------- */
@@ -1791,7 +2102,7 @@ body:has(> #root > .page.terminal-page) {
 /* Technical values (versions, rates, URLs, logs) keep LTR ordering in RTL. */
 [dir="rtl"] :is(.sidebar-brand-version, .metric, .metric-sub, .data-line .value,
     .server-row-url, .connection-error-url, .peer-address, .log-view, .connection-row,
-    .copy-value, .page-uptime) {
+    .copy-value, .server-uptime) {
   direction: ltr;
   unicode-bidi: isolate;
 }
@@ -2085,6 +2396,11 @@ a.nav-line {
   .nav-item {
     padding: 10px;
     font-size: 14.5px;
+  }
+
+  .server-picker-button {
+    padding: 10px;
+    font-size: 14px;
   }
 
   .content {
