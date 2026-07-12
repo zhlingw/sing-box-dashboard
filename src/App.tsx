@@ -763,8 +763,8 @@ function ShellContent(props: ShellProps & { onRetry: () => void }) {
           </div>
         )}
         {started && <DeprecatedWarningsGate />}
-        {host !== null && <ImportRemoteProfileDialog host={host} />}
-        {host !== null && <ImportProfileFileDialog host={host} />}
+        {localHost !== null && <ImportRemoteProfileDialog host={localHost} />}
+        {localHost !== null && <ImportProfileFileDialog host={localHost} />}
       </div>
     </CapabilitiesContext.Provider>
   );

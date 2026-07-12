@@ -11,7 +11,7 @@ const SORT_MODES: ConnectionSortMode[] = ["date", "traffic", "trafficTotal"];
 
 export function loadConnectionStateFilter(): ConnectionStateFilter {
   const value = loadStoredJson(STATE_FILTER_KEY);
-  return STATE_FILTERS.find((filter) => filter === value) ?? "all";
+  return STATE_FILTERS.find((filter) => filter === value) ?? "active";
 }
 
 export function saveConnectionStateFilter(value: ConnectionStateFilter): void {

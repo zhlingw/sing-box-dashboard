@@ -12,7 +12,7 @@ import {
 import { formatBytes } from "../api/format";
 import { useStream } from "../api/stream";
 import { navigate, useApi, type AccentPreference, type ThemePreference } from "../app/context";
-import { useDesktopHost } from "../app/desktop";
+import { useDesktopHost, useLocalDesktopHost } from "../app/desktop";
 import type { DesktopHost, DesktopSettingsState, DesktopSpeedMode } from "../app/desktop";
 import {
   loadDisableDeprecatedWarnings,
@@ -39,6 +39,7 @@ import { cx } from "../lib/cx";
 export function SettingsView() {
   const { t } = useI18n();
   const host = useDesktopHost();
+  const localHost = useLocalDesktopHost();
 
   return (
     <div className="page">
@@ -55,7 +56,7 @@ export function SettingsView() {
           {host !== null && (
             <NavRow icon="info" title={t("App")} onClick={() => navigate("settings/app")} />
           )}
-          {host !== null && (
+          {localHost !== null && (
             <NavRow
               icon="memory"
               title={t("Core")}
@@ -76,14 +77,16 @@ export function SettingsView() {
               title={t("Documentation")}
               href="https://sing-box.sagernet.org"
               contextMenu={
-                <>
-                  <MenuLink href="https://sing-box.sagernet.org/changelog/">
-                    {t("Changelog")}
-                  </MenuLink>
-                  <MenuLink href="https://sing-box.sagernet.org/configuration/">
-                    {t("Configuration")}
-                  </MenuLink>
-                </>
+                host !== null ? (
+                  <>
+                    <MenuLink href="https://sing-box.sagernet.org/changelog/">
+                      {t("Changelog")}
+                    </MenuLink>
+                    <MenuLink href="https://sing-box.sagernet.org/configuration/">
+                      {t("Configuration")}
+                    </MenuLink>
+                  </>
+                ) : undefined
               }
             />
             <NavRow
@@ -95,22 +98,20 @@ export function SettingsView() {
                   : "https://github.com/SagerNet/sing-box-dashboard"
               }
               contextMenu={
-                <MenuLink
-                  href={
-                    host !== null
-                      ? "https://github.com/SagerNet/sing-box/releases"
-                      : "https://github.com/SagerNet/sing-box-dashboard/releases"
-                  }
-                >
-                  {t("Releases")}
-                </MenuLink>
+                host !== null ? (
+                  <MenuLink href="https://github.com/SagerNet/sing-box/releases">
+                    {t("Releases")}
+                  </MenuLink>
+                ) : undefined
               }
             />
-            <NavRow
-              icon="favorite"
-              title={t("Sponsors")}
-              onClick={() => navigate("settings/sponsors")}
-            />
+            {host !== null && (
+              <NavRow
+                icon="favorite"
+                title={t("Sponsors")}
+                onClick={() => navigate("settings/sponsors")}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -312,7 +313,11 @@ function SettingsPageHeader(props: {
 }
 
 export function SponsorsView() {
+  const host = useDesktopHost();
   const { t } = useI18n();
+  if (host === null) {
+    return null;
+  }
   return (
     <div className="page">
       <SettingsPageHeader title={t("Sponsors")} />
@@ -333,7 +338,7 @@ export function SponsorsView() {
 }
 
 export function CoreView() {
-  const host = useDesktopHost();
+  const host = useLocalDesktopHost();
   if (host === null) {
     return null;
   }
@@ -884,7 +889,7 @@ export function ServersView(props: {
         }
       />
       <div>
-        <div className="list-section-title">{t("Servers")}</div>
+        {host !== null && <div className="list-section-title">{t("Servers")}</div>}
         <div className="nav-list">
           {servers.length === 0 ? (
             <div className={styles.emptyRow}>{t("No servers")}</div>

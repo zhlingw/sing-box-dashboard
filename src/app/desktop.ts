@@ -166,15 +166,19 @@ export function useDaemonConnection(host: DesktopHost): DaemonConnectionState {
 
   useEffect(() => {
     let stale = false;
+    let pushed = false;
+    const unsubscribe = host.daemon.onStateChanged((value) => {
+      pushed = true;
+      setState(value);
+    });
     host.daemon
       .getState()
       .then((value) => {
-        if (!stale) {
+        if (!stale && !pushed) {
           setState(value);
         }
       })
       .catch(() => {});
-    const unsubscribe = host.daemon.onStateChanged(setState);
     return () => {
       stale = true;
       unsubscribe();
@@ -253,11 +257,13 @@ export function useDesktopProfiles(host: DesktopHost): DesktopProfilesState {
 
   useEffect(() => {
     let stale = false;
+    let sequence = 0;
     const reload = () => {
+      const token = ++sequence;
       host.profiles
         .list()
         .then((value) => {
-          if (!stale) {
+          if (!stale && token === sequence) {
             setState(value);
           }
         })

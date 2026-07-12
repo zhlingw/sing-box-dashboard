@@ -175,7 +175,7 @@ function CrashReportDetailContent({
         if (!stale) {
           setFiles(value);
         }
-        return host.reports.markRead(name);
+        host.reports.markRead(name).catch(showError);
       })
       .catch((error) => {
         showError(error);
