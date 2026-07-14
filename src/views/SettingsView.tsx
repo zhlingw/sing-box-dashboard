@@ -13,7 +13,7 @@ import { formatBytes } from "../api/format";
 import { useStream } from "../api/stream";
 import { navigate, useApi, type AccentPreference, type ThemePreference } from "../app/context";
 import { useDesktopHost, useLocalDesktopHost } from "../app/desktop";
-import type { DesktopHost, DesktopSettingsState } from "../app/desktop";
+import type { DesktopHost, DesktopSettingsState, DesktopUpdateTrack } from "../app/desktop";
 import {
   loadDisableDeprecatedWarnings,
   saveDisableDeprecatedWarnings,
@@ -33,6 +33,7 @@ import {
   type TerminalConfig,
 } from "../lib/tailscaleSSH";
 import { parseCustomTheme, type Scheme, type TerminalThemeEntry } from "../lib/terminalTheme";
+import { openUpdateDialog, useUpdatesState } from "./UpdateViews";
 import styles from "./SettingsView.module.css";
 import { cx } from "../lib/cx";
 
@@ -281,6 +282,7 @@ function AppSettingsContent({
                 </button>
               )}
             </div>
+            <UpdateSettingsSection host={host} />
             <div>
               <div className="list-section-title">Tailscale</div>
               <div className="nav-list">
@@ -294,6 +296,164 @@ function AppSettingsContent({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function UpdateSettingsSection({ host }: { host: DesktopHost }) {
+  const { t } = useI18n();
+  const updates = useUpdatesState(host);
+  const [noUpdatesVisible, setNoUpdatesVisible] = useState(false);
+  const [githubTokenVisible, setGitHubTokenVisible] = useState(false);
+  const [githubToken, setGitHubToken] = useState("");
+  const [githubTokenLoading, setGitHubTokenLoading] = useState(false);
+  const [githubTokenSaving, setGitHubTokenSaving] = useState(false);
+
+  if (updates === null || !updates.supported) {
+    return null;
+  }
+
+  const checkNow = () => {
+    host.updates
+      .check()
+      .then((info) => {
+        if (info !== null) {
+          openUpdateDialog();
+        } else {
+          setNoUpdatesVisible(true);
+        }
+      })
+      .catch(showError);
+  };
+
+  const editGitHubToken = () => {
+    setGitHubToken("");
+    setGitHubTokenVisible(true);
+    setGitHubTokenLoading(true);
+    host.updates
+      .getGitHubToken()
+      .then(setGitHubToken)
+      .catch((error) => {
+        setGitHubTokenVisible(false);
+        showError(error);
+      })
+      .finally(() => setGitHubTokenLoading(false));
+  };
+
+  const saveGitHubToken = () => {
+    setGitHubTokenSaving(true);
+    host.updates
+      .setGitHubToken(githubToken)
+      .then(() => setGitHubTokenVisible(false))
+      .catch(showError)
+      .finally(() => setGitHubTokenSaving(false));
+  };
+
+  const githubTokenBusy = githubTokenLoading || githubTokenSaving;
+
+  return (
+    <div>
+      <div className="list-section-title">{t("Update")}</div>
+      <div className={styles.settingsList}>
+        {updates.stableTrackAvailable && (
+          <div className="settings-row">
+            <span className="settings-row-label">{t("Update Track")}</span>
+            <Select<DesktopUpdateTrack>
+              inline
+              options={[
+                { value: "stable", label: t("Stable") },
+                { value: "beta", label: t("Beta") },
+              ]}
+              value={updates.track}
+              onChange={(track) => {
+                void host.updates.setTrack(track).catch(showError);
+              }}
+            />
+          </div>
+        )}
+        <button type="button" className="settings-row" onClick={editGitHubToken}>
+          <span className="settings-row-label">{t("GitHub Token")}</span>
+          <Icon name="keyboard_arrow_right" size={14} />
+        </button>
+        <div className="settings-row">
+          <span className="settings-row-label">{t("Automatic Update Check")}</span>
+          <button
+            type="button"
+            className={updates.checkUpdateEnabled ? "switch on" : "switch"}
+            role="switch"
+            aria-checked={updates.checkUpdateEnabled}
+            aria-label={t("Automatic Update Check")}
+            onClick={() => {
+              void host.updates
+                .setCheckUpdateEnabled(!updates.checkUpdateEnabled)
+                .catch(showError);
+            }}
+          />
+        </div>
+        <button
+          type="button"
+          className="settings-row"
+          disabled={updates.checking}
+          onClick={checkNow}
+        >
+          <span className="settings-row-label">{t("Check Update")}</span>
+          {updates.checking && <Spinner />}
+        </button>
+        {updates.info !== null && (
+          <button type="button" className="settings-row" onClick={openUpdateDialog}>
+            <span className="settings-row-label">
+              {t("New version available: {version}", { version: updates.info.versionName })}
+            </span>
+            <Icon name="keyboard_arrow_right" size={14} />
+          </button>
+        )}
+      </div>
+      {noUpdatesVisible && (
+        <Dialog onClose={() => setNoUpdatesVisible(false)}>
+          <h3>{t("Check Update")}</h3>
+          <p className="dialog-message">{t("No updates available")}</p>
+          <div className="row-actions dialog-actions">
+            <Button variant="primary" onClick={() => setNoUpdatesVisible(false)}>
+              {t("Ok")}
+            </Button>
+          </div>
+        </Dialog>
+      )}
+      {githubTokenVisible && (
+        <Dialog
+          onClose={() => {
+            if (!githubTokenBusy) {
+              setGitHubTokenVisible(false);
+            }
+          }}
+        >
+          <h3>{t("GitHub Token")}</h3>
+          {githubTokenLoading ? (
+            <Spinner />
+          ) : (
+            <Field label={t("GitHub Token")}>
+              <SecretInput
+                value={githubToken}
+                placeholder={t("Get higher GitHub API rate limits")}
+                disabled={githubTokenSaving}
+                onChange={setGitHubToken}
+              />
+            </Field>
+          )}
+          <div className="row-actions dialog-actions">
+            <Button disabled={githubTokenBusy} onClick={() => setGitHubTokenVisible(false)}>
+              {t("Cancel")}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={githubTokenBusy}
+              onClick={saveGitHubToken}
+            >
+              {t("Save")}
+            </Button>
+          </div>
+        </Dialog>
+      )}
     </div>
   );
 }

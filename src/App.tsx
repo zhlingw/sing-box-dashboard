@@ -85,6 +85,7 @@ import {
   TerminalThemePickerView,
 } from "./views/SettingsView";
 import { SetupView } from "./views/SetupView";
+import { UpdatesGate } from "./views/UpdateViews";
 import { NetworkQualityView, STUNTestView, ToolsView } from "./views/ToolsView";
 import { TailscaleEndpointView } from "./views/TailscaleView";
 import { TailscaleSSHView } from "./views/TerminalView";
@@ -484,6 +485,7 @@ function DesktopApp(props: { host: DesktopHost }) {
           serversState={state.serversState}
           onSelectServer={(server) => selectServer(server.id)}
         />
+        <UpdatesGate host={host} />
       </div>
     );
   }
@@ -513,6 +515,7 @@ function DesktopApp(props: { host: DesktopHost }) {
         accent={state.accent}
         onAccentChange={state.updateAccent}
       />
+      <UpdatesGate host={host} />
     </div>
   );
 }

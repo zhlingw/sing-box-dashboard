@@ -101,6 +101,31 @@ export interface DesktopCrashReportExportOptions {
 
 export type DesktopSpeedMode = "disabled" | "enabled" | "unified";
 
+export type DesktopUpdateTrack = "stable" | "beta";
+export type DesktopUpdateInstallResult = "started" | "signer-mismatch" | "not-newer";
+
+export interface DesktopUpdateInfo {
+  versionName: string;
+  releaseURL: string;
+  downloadURL: string;
+  releaseNotes: string;
+  isPrerelease: boolean;
+  fileSize: number;
+}
+
+export interface DesktopUpdatesState {
+  supported: boolean;
+  track: DesktopUpdateTrack;
+  stableTrackAvailable: boolean;
+  checkUpdateEnabled: boolean;
+  prompted: boolean;
+  info: DesktopUpdateInfo | null;
+  checking: boolean;
+  downloading: boolean;
+  installing: boolean;
+  downloadProgress: number;
+}
+
 export interface DesktopSettingsState {
   speedMode: DesktopSpeedMode;
   openAtLogin: boolean;
@@ -207,6 +232,20 @@ export interface DesktopHost {
     setOOMKillerKillConnections(value: boolean): Promise<void>;
     cacheSize(): Promise<number>;
     clearCache(): Promise<void>;
+  };
+  updates: {
+    state(): Promise<DesktopUpdatesState>;
+    check(): Promise<DesktopUpdateInfo | null>;
+    getGitHubToken(): Promise<string>;
+    setGitHubToken(value: string): Promise<void>;
+    downloadAndInstall(): Promise<DesktopUpdateInstallResult>;
+    installWithElevation(): Promise<boolean>;
+    setTrack(track: DesktopUpdateTrack): Promise<void>;
+    setCheckUpdateEnabled(value: boolean): Promise<void>;
+    setPrompted(): Promise<void>;
+    markShown(): Promise<void>;
+    onStateChanged(listener: (state: DesktopUpdatesState) => void): () => void;
+    onPresentRequested(listener: () => void): () => void;
   };
   // window.close() destroys sandboxed renderer webContents without emitting the host window's close event.
   application: {
