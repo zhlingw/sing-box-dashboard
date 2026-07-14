@@ -210,6 +210,41 @@ function AppSettingsContent({
                 />
               </div>
               <div className="settings-row">
+                <span className="settings-row-label">{t("Enable Tray")}</span>
+                <button
+                  type="button"
+                  className={settings.trayEnabled ? "switch on" : "switch"}
+                  role="switch"
+                  aria-checked={settings.trayEnabled}
+                  aria-label={t("Enable Tray")}
+                  onClick={() => {
+                    const value = !settings.trayEnabled;
+                    setSettings({
+                      ...settings,
+                      trayEnabled: value,
+                    });
+                    host.settings.setTrayEnabled(value).catch(showError);
+                  }}
+                />
+              </div>
+              {settings.trayEnabled && (
+                <div className="settings-row">
+                  <span className="settings-row-label">{t("Keep Tray in Background")}</span>
+                  <button
+                    type="button"
+                    className={settings.trayInBackground ? "switch on" : "switch"}
+                    role="switch"
+                    aria-checked={settings.trayInBackground}
+                    aria-label={t("Keep Tray in Background")}
+                    onClick={() => {
+                      const value = !settings.trayInBackground;
+                      setSettings({ ...settings, trayInBackground: value });
+                      host.settings.setTrayInBackground(value).catch(showError);
+                    }}
+                  />
+                </div>
+              )}
+              <div className="settings-row">
                 <span className="settings-row-label">{t("Cache Size")}</span>
                 {cacheSize === null ? (
                   <Spinner />

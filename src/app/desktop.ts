@@ -104,6 +104,8 @@ export type DesktopSpeedMode = "disabled" | "enabled" | "unified";
 export interface DesktopSettingsState {
   speedMode: DesktopSpeedMode;
   openAtLogin: boolean;
+  trayEnabled: boolean;
+  trayInBackground: boolean;
   oomKillerEnabled: boolean;
   oomMemoryLimitMB: number;
   oomKillerKillConnections: boolean;
@@ -198,6 +200,8 @@ export interface DesktopHost {
     get(): Promise<DesktopSettingsState>;
     setSpeedMode(mode: DesktopSpeedMode): Promise<void>;
     setOpenAtLogin(value: boolean): Promise<void>;
+    setTrayEnabled(value: boolean): Promise<void>;
+    setTrayInBackground(value: boolean): Promise<void>;
     setOOMKillerEnabled(value: boolean): Promise<void>;
     setOOMMemoryLimitMB(value: number): Promise<void>;
     setOOMKillerKillConnections(value: boolean): Promise<void>;

@@ -394,6 +394,8 @@ export const TRANSLATIONS = {
   "Real-time Speed": { "zh-Hans": "实时速率", "zh-Hant": "實時速率", "fa": "نرخ لحظه‌ای", "ru": "Текущая скорость" },
   "Unified": { "zh-Hans": "统一", "zh-Hant": "統一", "fa": "یکپارچه", "ru": "Единый" },
   "Start At Login": { "zh-Hans": "开机启动", "zh-Hant": "開機啟動", "fa": "اجرا هنگام ورود", "ru": "Запуск при входе" },
+  "Enable Tray": { "zh-Hans": "启用托盘", "zh-Hant": "啟用系統匣", "fa": "فعال‌سازی سینی سیستم", "ru": "Включить значок в трее" },
+  "Keep Tray in Background": { "zh-Hans": "将托盘保留在后台", "zh-Hant": "將系統匣保留在背景", "fa": "نگه‌داشتن سینی سیستم در پس‌زمینه", "ru": "Оставлять значок в трее в фоновом режиме" },
   "Cannot connect to the sing-box service": { "zh-Hans": "无法连接 sing-box 服务", "zh-Hant": "無法連接 sing-box 服務", "fa": "اتصال به سرویس sing-box ممکن نیست", "ru": "Не удаётся подключиться к службе sing-box" },
   "The sing-box service is not installed": { "zh-Hans": "sing-box 服务未安装", "zh-Hant": "sing-box 服務未安裝", "fa": "سرویس sing-box نصب نشده است", "ru": "Служба sing-box не установлена" },
   "Reinstall sing-box to restore the system service.": { "zh-Hans": "请重新安装 sing-box 软件包以恢复系统服务。", "zh-Hant": "請重新安裝 sing-box 軟體包以恢復系統服務。", "fa": "برای بازیابی سرویس سیستم، بستهٔ sing-box را دوباره نصب کنید.", "ru": "Переустановите пакет sing-box, чтобы восстановить системную службу." },
