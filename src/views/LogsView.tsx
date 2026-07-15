@@ -11,7 +11,7 @@ import { Icon } from "../components/Icon";
 import { PageHeader } from "../components/PageHeader";
 import { StreamErrorBanner } from "../components/StreamBanner";
 import { EmptyState, IconButton, MenuItem, OthersMenu, SearchInput, Spinner, SubMenu } from "../components/ui";
-import { LogLevel, ServiceStatus_Type } from "../gen/daemon/started_service_pb";
+import { LogLevel } from "../gen/daemon/started_service_pb";
 import { ansiColorCss, parseAnsi, parseCssColor, stripAnsi, type Rgb } from "../lib/ansi";
 import styles from "./LogsView.module.css";
 
@@ -58,7 +58,6 @@ export function LogsView() {
   const { t } = useI18n();
   const logs = useStream(api.logs);
   const outage = useStreamOutage(logs, isTerminalCode(logs.errorCode));
-  const serviceStatus = useStream(api.serviceStatus);
   const [level, setLevel] = useState<LogLevel | null>(null);
   const [paused, setPaused] = useState(false);
   const [frozen, setFrozen] = useState<LogEntry[]>([]);
@@ -66,7 +65,6 @@ export function LogsView() {
   const viewRef = useRef<HTMLDivElement>(null);
   const background = useLogBackground();
 
-  const started = serviceStatus.data.status?.status === ServiceStatus_Type.STARTED;
   const effectiveLevel = level ?? logs.data.defaultLevel ?? LogLevel.INFO;
 
   const togglePause = () => {
@@ -145,8 +143,6 @@ export function LogsView() {
     );
   } else if (outage !== null) {
     body = null;
-  } else if (!started && serviceStatus.phase === "active") {
-    body = <EmptyState icon="text_snippet">{t("Service not started")}</EmptyState>;
   } else if (logs.phase === "connecting") {
     body = (
       <EmptyState>

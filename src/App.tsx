@@ -591,6 +591,23 @@ function ShellContent(props: ShellProps & { onRetry: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [leadSlot, setLeadSlot] = useState<HTMLElement | null>(null);
   const [endSlot, setEndSlot] = useState<HTMLElement | null>(null);
+  const reportedFatalError = useRef<string | null>(null);
+
+  const serviceStatusType = serviceStatus.data.status?.status;
+  const fatalError =
+    serviceStatusType === ServiceStatus_Type.FATAL
+      ? serviceStatus.data.status?.errorMessage || t("Service failed to start")
+      : null;
+  useEffect(() => {
+    if (fatalError === null) {
+      reportedFatalError.current = null;
+      return;
+    }
+    if (reportedFatalError.current !== fatalError) {
+      reportedFatalError.current = fatalError;
+      showError(fatalError);
+    }
+  }, [fatalError]);
 
   const lostError = useStreamOutage(
     serviceStatus,
@@ -639,7 +656,7 @@ function ShellContent(props: ShellProps & { onRetry: () => void }) {
     setMenuOpen(false);
   }, [route]);
 
-  const started = serviceStatus.data.status?.status === ServiceStatus_Type.STARTED;
+  const started = serviceStatusType === ServiceStatus_Type.STARTED;
   const hasGroups = started && groups.data.loaded && groups.data.groups.length > 0;
   const known = serviceStatus.phase !== "connecting" || serviceStatus.data.status !== null;
 
