@@ -26,6 +26,7 @@ import {
 import { ProfileQRSDialog } from "./ProfileQRSDialog";
 import styles from "./ProfileViews.module.css";
 import { cx } from "../lib/cx";
+import { canShareFiles, shareError, shareFile } from "../lib/sharing";
 
 const JsonEditor = lazy(() =>
   import("../components/JsonEditor").then((module) => ({ default: module.JsonEditor })),
@@ -63,6 +64,33 @@ function ShareMenuItems(props: {
   onShowQRS: () => void;
 }) {
   const { t } = useI18n();
+  const shareProfileFile = () => {
+    props.host.profiles
+      .encodeData(props.profile.id)
+      .then((data) =>
+        shareFile(props.host, `${props.profile.name}.bpf`, data, "application/octet-stream"),
+      )
+      .catch((error) => {
+        const reportableError = shareError(error);
+        if (reportableError !== null) {
+          showError(reportableError);
+        }
+      });
+  };
+  const shareProfileContent = () => {
+    props.host.profiles
+      .readContent(props.profile.id)
+      .then((content) =>
+        shareFile(props.host, `${props.profile.name}.json`, content, "application/json"),
+      )
+      .catch((error) => {
+        const reportableError = shareError(error);
+        if (reportableError !== null) {
+          showError(reportableError);
+        }
+      });
+  };
+  const fileSharingAvailable = canShareFiles(props.host);
   return (
     <>
       <MenuItem
@@ -71,12 +99,22 @@ function ShareMenuItems(props: {
       >
         {t("Save File")}
       </MenuItem>
+      {fileSharingAvailable && (
+        <MenuItem icon="share" onSelect={shareProfileFile}>
+          {t("Share File")}
+        </MenuItem>
+      )}
       <MenuItem
         icon="save"
         onSelect={() => void props.host.profiles.exportFile(props.profile.id).catch(showError)}
       >
         {t("Save Content JSON")}
       </MenuItem>
+      {fileSharingAvailable && (
+        <MenuItem icon="share" onSelect={shareProfileContent}>
+          {t("Share Content JSON File")}
+        </MenuItem>
+      )}
       {props.profile.type === "remote" && (
         <MenuItem icon="qr_code" onSelect={props.onShowQR}>
           {t("Share URL as QR Code")}

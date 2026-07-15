@@ -9,6 +9,7 @@ import { PageHeader } from "../components/PageHeader";
 import { EmptyState, IconButton, Spinner } from "../components/ui";
 import { cx } from "../lib/cx";
 import { ReportShareDialog } from "./CrashReportsView";
+import { shareError, shareFile } from "../lib/sharing";
 import styles from "./OOMReportsView.module.css";
 import {
   oomReportFileDisplayName,
@@ -109,10 +110,24 @@ export function OOMReportDetailContent({
       </div>
       {sharing && files !== null && (
         <ReportShareDialog
+          host={host}
           hasConfiguration={files.some((file) => file.name === "configuration.json")}
           hasLog={files.some((file) => file.name === "go.log")}
           onSave={(options) => {
             host.reports.oom.exportFile(name, options).catch(showError);
+          }}
+          onShare={(options) => {
+            host.reports.oom
+              .createArchive(name, options)
+              .then((archive) =>
+                shareFile(host, archive.fileName, archive.data, archive.mediaType),
+              )
+              .catch((error) => {
+                const reportableError = shareError(error);
+                if (reportableError !== null) {
+                  showError(reportableError);
+                }
+              });
           }}
           onClose={() => setSharing(false)}
         />

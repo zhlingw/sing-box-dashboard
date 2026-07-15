@@ -99,6 +99,12 @@ export interface DesktopCrashReportExportOptions {
   encrypt: boolean;
 }
 
+export interface DesktopReportArchive {
+  fileName: string;
+  data: Uint8Array;
+  mediaType: string;
+}
+
 export type DesktopSpeedMode = "disabled" | "enabled" | "unified";
 
 export type DesktopUpdateTrack = "stable" | "beta";
@@ -188,6 +194,7 @@ export interface DesktopHost {
       read(name: string): Promise<DesktopCrashReportFile[]>;
       markRead(name: string): Promise<void>;
       exportFile(name: string, options: DesktopCrashReportExportOptions): Promise<boolean>;
+      createArchive(name: string, options: DesktopCrashReportExportOptions): Promise<DesktopReportArchive>;
       remove(name: string): Promise<void>;
       removeAll(): Promise<void>;
     };
@@ -196,6 +203,7 @@ export interface DesktopHost {
       read(name: string): Promise<DesktopOOMReportFile[]>;
       markRead(name: string): Promise<void>;
       exportFile(name: string, options: DesktopCrashReportExportOptions): Promise<boolean>;
+      createArchive(name: string, options: DesktopCrashReportExportOptions): Promise<DesktopReportArchive>;
       remove(name: string): Promise<void>;
       removeAll(): Promise<void>;
     };
@@ -249,6 +257,7 @@ export interface DesktopHost {
   };
   // window.close() destroys sandboxed renderer webContents without emitting the host window's close event.
   application: {
+    shareFile(fileName: string, data: Uint8Array | string): Promise<void>;
     showMainWindow(): void;
     closeTrayMenu(): void;
     quit(): void;
